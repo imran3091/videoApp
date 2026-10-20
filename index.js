@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
-
 const userRouter = require("./Routes/user.route");
+
 
 const port = 3000;
 

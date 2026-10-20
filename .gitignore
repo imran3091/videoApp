@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+hs_err_pid*.log
+replay_pid*.log
+
+videos/
+
+.env
+.env.*
+!.env.example
+node_modules/
+videos/
+hs_err_pid*.log
+replay_pid*.log

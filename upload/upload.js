@@ -1,19 +1,13 @@
 const fs = require("fs")
 const path=require("path")
 const Busboy = require("busboy")
-const ffmpeg = require("fluent-ffmpeg")
 const { getDuration, preview } = require("../function/videoDuration");
 const crypto = require("crypto");
-const pool =
+const pool = require("../dbConfig/db");
 
 
-
-
-
-function upload(req,res){
-    console.log("UPLOAD FUNCTION");
-    console.log("METHOD:", req.method);
-    console.log("CONTENT-TYPE:", req.headers["content-type"]);
+async function upload(req,res){
+ 
 
 const bb = Busboy({
     headers: req.headers
@@ -51,32 +45,67 @@ let Totalbyte = 0;
             Totalbyte += chunk.length;
         });
 
+
 writeStream.on("finish",async()=>{
+
+    const userId=1;
+    const title= fileName;
+    const description="RANdom video cheek in server please no hasistate"
+
     console.log("Finish");
     console.log("Received:", (Totalbyte/ (1024 * 1024)).toFixed(2), "MB");
 
 
  try {
+    const[result]=await pool.execute(
+        `INSERT INTO videos
+        (user_id,title,description,video_url,visibility,status)
+        VALUES(?,?,?,?,?,?)`,
+        [
+            userId,
+            title,
+            description,
+            "/api/videos/temp",
+            "public",
+            "processing"
+
+
+        ]
+    );
+    const videoId=result.insertId
         const duration = await getDuration(filePath);
-
-        console.log("Duration:", duration, "seconds");
-
         if (duration > 30) {
-            preview(filePath, prevName);
+            await preview(filePath, prevName);
         } else {
             console.log("Video is 30 seconds or less");
         }
+          await pool.execute(
+            `UPDATE videos
+             SET
+                video_url = ?,
+                preview_url = ?,
+                status = ?
+             WHERE id = ?`,
+            [
+                `/api/videos/${videoId}`,
+                `/api/videos/${videoId}/preview`,
+                "ready",
+                videoId
+            ]
+        );
+
 
         res.send("Upload complete!");
 
     } catch (err) {
+        await fs.promises.unlink(filePath);
+        await fs.promises.unlink(prevName);
+        console.log("Original video deleted");
         console.log("Duration error:", err);
         res.status(500).send("Video processing failed");
     }
 
 });
-
-
 
 file.on("error",(err)=>{
     console.log("err");
